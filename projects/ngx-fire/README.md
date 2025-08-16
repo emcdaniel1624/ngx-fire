@@ -1,22 +1,32 @@
 ngx-fire
 
 
-A small, declarative, signal-based approach to working with Firebase in Angular. It embraces Angular's signals for local, ergonomic state and real-time updates. Today it focuses on Firestore. Auth support is planned ASAP.
+A small, declarative, signal-based way to work with Firebase in Angular. It uses Angular signals for ergonomic state and real-time updates. Today it focuses on Firestore; Auth support is planned ASAP.
 
 Features
 
 - Declarative signals for real-time Firestore data
 - Minimal API surface
-- Zero dependency on @angular/fire (uses Firebase Web SDK directly)
+- No @angular/fire dependency (uses Firebase Web SDK directly)
 - Emulator support via configuration
 - Auto-cleanup on component destroy
 
 Install
 
-	npm install firebase
-	# ngx-fire is your local lib; map it via tsconfig paths or publish to npm
+- 
 
-If you’re developing in a monorepo, map the library path in your root tsconfig:
+
+From npm:
+
+
+	- npm install ngx-fire firebase
+- 
+Peer requirements:
+
+
+	- Angular 17+ (works great with 18/19/20)
+	- Firebase JS SDK 10+
+If you’re developing locally against the source (monorepo), map the library path in your root tsconfig instead of installing from npm:
 
 
 	{
@@ -29,7 +39,7 @@ If you’re developing in a monorepo, map the library path in your root tsconfig
 
 Quick Start
 
-1. Provide Firestore in your app config
+1) Provide Firestore in your app config
 
 	// app.config.ts
 	import { ApplicationConfig } from '@angular/core'
@@ -69,8 +79,7 @@ Supported config shapes:
 	  useEmulator: { host: '127.0.0.1', port: 8080 }
 	})
 
-
-1. Use injectCollection in a component
+2) Use injectCollection in a component
 
 	import { Component, ChangeDetectionStrategy } from '@angular/core'
 	import { injectCollection } from 'ngx-fire'
@@ -123,7 +132,7 @@ Initializes Firebase App and registers a Firestore instance in Angular DI.
 - useEmulator:
 	- boolean — true uses localhost:8080
 	- { host?: string; port?: number } — custom emulator
-Usage:
+Examples:
 
 
 	provideFirestore({ firebaseConfig })
@@ -157,19 +166,15 @@ Example:
 	
 	const todos = injectCollection<Todo>('todos')
 	
-	todos.data()        // Todo[]
-	todos.error()       // Error | null
-	todos.hasError()    // boolean
+	todos.data()     // Todo[]
+	todos.error()    // Error | null
+	todos.hasError() // boolean
 	
 	await todos.insert({ title: 'Buy milk', done: false, createdAt: new Date() })
 	await todos.update('docId', { done: true })
 	await todos.remove('docId')
 
 Using Zod (optional)
-
-
-You can define your model with Zod and infer the type:
-
 
 	import { z } from 'zod'
 	
@@ -184,13 +189,9 @@ You can define your model with Zod and infer the type:
 	
 	const posts = injectCollection<Post>('posts')
 
-Validation of incoming data is up to you; ngx-fire uses the inferred type for compile-time safety.
+Validation at runtime is up to you; ngx-fire uses the inferred types for compile-time safety.
 
 Firestore Emulator with Docker (optional)
-
-
-Example docker-compose.yml:
-
 
 	version: '3.8'
 	services:
@@ -204,16 +205,24 @@ Example docker-compose.yml:
 	    ports:
 	      - '8080:8080'
 
-Then run:
+Start:
 
 
 	docker compose up -d
-	# in app.config.ts enable emulator:
+
+Enable in app:
+
+
 	provideFirestore({ firebaseConfig, useEmulator: true })
 
 Roadmap
 
 - Firebase Auth support with signal-based session state
 - Document-level helpers (injectDoc)
-- Queries and pagination helpers
+- Query helpers (constraints, pagination)
 - Transaction and batch utilities
+
+License
+
+
+MIT
