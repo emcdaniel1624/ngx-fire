@@ -1,59 +1,219 @@
-# NgxFire
+ngx-fire
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.1.0.
 
-## Development server
+A small, declarative, signal-based approach to working with Firebase in Angular. It embraces Angular's signals for local, ergonomic state and real-time updates. Today it focuses on Firestore. Auth support is planned ASAP.
 
-To start a local development server, run:
+Features
 
-```bash
-ng serve
-```
+- Declarative signals for real-time Firestore data
+- Minimal API surface
+- Zero dependency on @angular/fire (uses Firebase Web SDK directly)
+- Emulator support via configuration
+- Auto-cleanup on component destroy
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Install
 
-## Code scaffolding
+	npm install firebase
+	# ngx-fire is your local lib; map it via tsconfig paths or publish to npm
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+If you’re developing in a monorepo, map the library path in your root tsconfig:
 
-```bash
-ng generate component component-name
-```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+	{
+	  "compilerOptions": {
+	    "paths": {
+	      "ngx-fire": ["projects/ngx-fire/src/public-api.ts"]
+	    }
+	  }
+	}
 
-```bash
-ng generate --help
-```
+Quick Start
 
-## Building
+1. Provide Firestore in your app config
 
-To build the project run:
+	// app.config.ts
+	import { ApplicationConfig } from '@angular/core'
+	import { provideRouter } from '@angular/router'
+	import { provideFirestore } from 'ngx-fire'
+	
+	export const appConfig: ApplicationConfig = {
+	  providers: [
+	    provideRouter([]),
+	    provideFirestore({
+	      firebaseConfig: {
+	        apiKey: '...',
+	        authDomain: '...',
+	        projectId: '...',
+	        appId: '...'
+	      },
+	      // Optional: connect to emulator
+	      // useEmulator: true
+	      // or with options:
+	      // useEmulator: { host: 'localhost', port: 8080 }
+	    })
+	  ]
+	}
 
-```bash
-ng build
-```
+Supported config shapes:
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
-## Running unit tests
+	// Simplest:
+	provideFirestore({ firebaseConfig })
+	
+	// Enable emulator with defaults (localhost:8080):
+	provideFirestore({ firebaseConfig, useEmulator: true })
+	
+	// Custom emulator:
+	provideFirestore({
+	  firebaseConfig,
+	  useEmulator: { host: '127.0.0.1', port: 8080 }
+	})
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
 
-```bash
-ng test
-```
+1. Use injectCollection in a component
 
-## Running end-to-end tests
+	import { Component, ChangeDetectionStrategy } from '@angular/core'
+	import { injectCollection } from 'ngx-fire'
+	
+	type Post = {
+	  id: string
+	  title: string
+	  content: string
+	  createdAt: Date
+	}
+	
+	@Component({
+	  selector: 'app-posts',
+	  template: `
+	    @if (posts.error()) {
+	      <p class="text-red-600">Error: {{ posts.error()?.message }}</p>
+	    }
+	
+	    <ul>
+	      @for (p of posts.data(); track p.id) {
+	        <li>{{ p.title }} — {{ p.content }}</li>
+	      }
+	    </ul>
+	
+	    <button (click)="add()">Add</button>
+	  `,
+	  changeDetection: ChangeDetectionStrategy.OnPush
+	})
+	export class PostsComponent {
+	  posts = injectCollection<Post>('posts')
+	
+	  async add() {
+	    await this.posts.insert({
+	      title: 'Hello',
+	      content: 'World',
+	      createdAt: new Date()
+	    })
+	  }
+	}
 
-For end-to-end (e2e) testing, run:
+API
 
-```bash
-ng e2e
-```
+provideFirestore(config)
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
 
-## Additional Resources
+Initializes Firebase App and registers a Firestore instance in Angular DI.
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+- firebaseConfig: FirebaseOptions
+- useEmulator:
+	- boolean — true uses localhost:8080
+	- { host?: string; port?: number } — custom emulator
+Usage:
+
+
+	provideFirestore({ firebaseConfig })
+	provideFirestore({ firebaseConfig, useEmulator: true })
+	provideFirestore({ firebaseConfig, useEmulator: { host: 'localhost', port: 8080 } })
+
+injectCollection<T>(collectionPath: string)
+
+
+Subscribes to a Firestore collection with real-time updates and exposes signals.
+
+Returns:
+
+
+- data: ReadonlySignal<T[]>
+- error: ReadonlySignal<Error | null>
+- hasError: ReadonlySignal<boolean>
+- insert(doc: Omit<T, 'id'>): Promise<DocumentReference>
+- update(id: string, changes: Partial<T>): Promise<DocumentReference>
+- remove(id: string): Promise<void>
+Notes:
+
+
+- Each document in data() includes id as a field.
+- Timestamps are normalized to Date for template friendliness.
+- Cleanup happens automatically on component destroy.
+Example:
+
+
+	type Todo = { id: string; title: string; done: boolean; createdAt: Date }
+	
+	const todos = injectCollection<Todo>('todos')
+	
+	todos.data()        // Todo[]
+	todos.error()       // Error | null
+	todos.hasError()    // boolean
+	
+	await todos.insert({ title: 'Buy milk', done: false, createdAt: new Date() })
+	await todos.update('docId', { done: true })
+	await todos.remove('docId')
+
+Using Zod (optional)
+
+
+You can define your model with Zod and infer the type:
+
+
+	import { z } from 'zod'
+	
+	const PostSchema = z.object({
+	  id: z.string(),
+	  title: z.string(),
+	  content: z.string(),
+	  createdAt: z.date()
+	})
+	
+	type Post = z.infer<typeof PostSchema>
+	
+	const posts = injectCollection<Post>('posts')
+
+Validation of incoming data is up to you; ngx-fire uses the inferred type for compile-time safety.
+
+Firestore Emulator with Docker (optional)
+
+
+Example docker-compose.yml:
+
+
+	version: '3.8'
+	services:
+	  firebase-emulator:
+	    image: google/cloud-sdk:emulators
+	    command: >
+	      bash -lc "
+	      gcloud config set project your-project &&
+	      gcloud beta emulators firestore start --host-port=0.0.0.0:8080 --quiet
+	      "
+	    ports:
+	      - '8080:8080'
+
+Then run:
+
+
+	docker compose up -d
+	# in app.config.ts enable emulator:
+	provideFirestore({ firebaseConfig, useEmulator: true })
+
+Roadmap
+
+- Firebase Auth support with signal-based session state
+- Document-level helpers (injectDoc)
+- Queries and pagination helpers
+- Transaction and batch utilities

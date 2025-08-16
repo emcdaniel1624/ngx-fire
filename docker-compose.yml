@@ -1,0 +1,15 @@
+name: ngx-fire
+
+services:
+  firebase-emulator:
+    image: evolutecx/firebase-emulator:latest
+    container_name: firebase-emulator
+    ports:
+      - "4000:4000"   # UI
+      - "8080:8080"   # Firestore
+      - "9099:9099"   # Auth
+    environment:
+      - FB_PROJECT_ID=your-project-id
+    volumes:
+      - ./firebase-data:/firebase/data:rw  # Persists data between restarts
+    restart: unless-stopped
