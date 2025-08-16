@@ -7,7 +7,6 @@ Features
 
 - Declarative signals for real-time Firestore data
 - Minimal API surface
-- No @angular/fire dependency (uses Firebase Web SDK directly)
 - Emulator support via configuration
 - Auto-cleanup on component destroy
 
